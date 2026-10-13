@@ -18,6 +18,8 @@ import trimesh
 from dotenv import load_dotenv
 from PIL import Image, ImageDraw
 
+import social_media_workflow
+
 
 load_dotenv()
 
@@ -45,16 +47,8 @@ def get_api_key(key_name):
         return None
 
 
-_COHERE_SESSION_KEYS = ["cohere_api_key_prompt", "cohere_api_key_chat", "cohere_api_key_blog"]
-
-
 def get_cohere_api_key():
-    """Get the session-provided or configured Cohere API key."""
-    for session_key_name in _COHERE_SESSION_KEYS:
-        session_key = st.session_state.get(session_key_name, "").strip()
-        if session_key:
-            return session_key
-
+    """Get the server-configured Cohere API key."""
     candidate_names = [
         "COHERE_API_KEY",
         "COHERE_KEY",
@@ -66,16 +60,6 @@ def get_cohere_api_key():
         if value:
             return value
     return None
-
-
-def render_cohere_api_key_input(session_key_name):
-    """Render the Cohere API key field within the current tab."""
-    st.text_input(
-        "Cohere API key",
-        type="password",
-        key=session_key_name,
-        help="Used only for this browser session and not saved to this app's configuration.",
-    )
 
 
 def get_cohere_response(api_key, user_input, history, model_name, temperature, max_tokens):
@@ -980,7 +964,7 @@ installButton.addEventListener('click', async () => {
 
     st.markdown(install_button_html, unsafe_allow_html=True)
 
-    tab_details, tab_prompt, tab_chat, tab1, tab2, tab3, tab4_obj, tab4_stl, tab_blog, tab_video, tab_social, tab_links = st.tabs([
+    tab_details, tab_prompt, tab_chat, tab1, tab2, tab3, tab4_obj, tab4_stl, tab_blog, tab_video, tab_social, tab_social_animation, tab_links = st.tabs([
         "Details",
         "3D Model Prompt Ideas (Cohere)",
         "AI Chat Assistant",
@@ -992,6 +976,7 @@ installButton.addEventListener('click', async () => {
         "Blog Writer (Cohere)",
         "Video Editor (MoviePy)",
         "Social Share",
+        "Social Media & Animation Development",
         "Links",
     ])
 
@@ -1003,12 +988,7 @@ installButton.addEventListener('click', async () => {
         if "image_prompt_value" not in st.session_state:
             st.session_state["image_prompt_value"] = "One Single Stylized simple multicoloured Common Holly performing Heterophylly whilst presented on a sturdy figurine base suitable for 3D printing."
         mode = "Fast_Mode_OA"
-        image_api_key = st.text_input(
-            "OpenAI API key",
-            type="password",
-            key="image_openai_api_key",
-            help="Used only for this browser session and not saved to this app's configuration.",
-        )
+        image_api_key = get_api_key("OPENAI_API_KEY") or ""
         prompt = st.text_area(
             "Image prompt",
             value=st.session_state["image_prompt_value"],
@@ -1016,27 +996,23 @@ installButton.addEventListener('click', async () => {
         )
 
         if st.button("Generate Image"):
-            with st.spinner("Generating image..."):
-                image_path = (
-                    generate_image_openai(prompt, image_api_key)
-                )
-                if image_path:
-                    st.session_state["image_path"] = image_path
-                    st.session_state["last_image_generation_status"] = "Image generated successfully."
-                    st.session_state["last_generated_image_prompt"] = prompt
-                    st.image(image_path, caption="Generated Image", width=400)
-                else:
-                    st.session_state["last_image_generation_status"] = "Image generation failed."
+            if not image_api_key:
+                st.error("Set OPENAI_API_KEY in .env or Streamlit secrets to generate images.")
+            else:
+                with st.spinner("Generating image..."):
+                    image_path = generate_image_openai(prompt, image_api_key)
+                    if image_path:
+                        st.session_state["image_path"] = image_path
+                        st.session_state["last_image_generation_status"] = "Image generated successfully."
+                        st.session_state["last_generated_image_prompt"] = prompt
+                        st.image(image_path, caption="Generated Image", width=400)
+                    else:
+                        st.session_state["last_image_generation_status"] = "Image generation failed."
 
     with tab2:
         st.caption("Remember to check API usage!")
         mode = "Medium_Quality_Mode_STA"
-        model_api_key = st.text_input(
-            "Stability AI API key",
-            type="password",
-            key="model_stability_api_key",
-            help="Used only for this browser session and not saved to this app's configuration.",
-        )
+        model_api_key = get_api_key("STABILITY_API_KEY") or ""
         image_path = st.session_state.get("image_path")
 
         uploaded = st.file_uploader("Upload an image (optional)", type=["png", "jpg", "jpeg"], key="model_image_upload")
@@ -1225,12 +1201,11 @@ installButton.addEventListener('click', async () => {
             """,
             unsafe_allow_html=True,
         )
-        render_cohere_api_key_input("cohere_api_key_chat")
         cohere_api_key = get_cohere_api_key()
         if cohere_api_key:
             st.success("Cohere key detected. Assistant is ready.")
         else:
-            st.warning("Enter a Cohere API key above, or configure one in .env or Streamlit secrets.")
+            st.warning("Set COHERE_API_KEY in .env or Streamlit secrets to use the assistant.")
 
         if "chat_history" not in st.session_state:
             st.session_state["chat_history"] = []
@@ -1298,7 +1273,7 @@ installButton.addEventListener('click', async () => {
             if not user_input.strip():
                 st.info("Type a prompt first.")
             elif not cohere_api_key:
-                st.error("Enter a Cohere API key above to use the assistant.")
+                st.error("Set COHERE_API_KEY in .env or Streamlit secrets to use the assistant.")
             else:
                 try:
                     history = st.session_state["chat_history"]
@@ -1428,12 +1403,11 @@ installButton.addEventListener('click', async () => {
         st.subheader("Cohere Blog Writer")
         st.caption("Ask Cohere a question and generate a structured blog draft in Markdown.")
 
-        render_cohere_api_key_input("cohere_api_key_blog")
         cohere_api_key = get_cohere_api_key()
         if cohere_api_key:
             st.success("Cohere key detected. Blog writer is ready.")
         else:
-            st.warning("Enter a Cohere API key above, or configure one in .env or Streamlit secrets.")
+            st.warning("Set COHERE_API_KEY in .env or Streamlit secrets to use the blog writer.")
 
         if "blog_question" not in st.session_state:
             st.session_state["blog_question"] = "How can small studios use AI to speed up 3D concept workflows?"
@@ -1474,7 +1448,7 @@ installButton.addEventListener('click', async () => {
             if not st.session_state["blog_question"].strip():
                 st.info("Add a question or topic first.")
             elif not cohere_api_key:
-                st.error("Enter a Cohere API key above to generate a blog draft.")
+                st.error("Set COHERE_API_KEY in .env or Streamlit secrets to generate a blog draft.")
             else:
                 try:
                     include_outline = "yes" if st.session_state.get("blog_include_outline") else "no"
@@ -1526,12 +1500,11 @@ installButton.addEventListener('click', async () => {
         st.subheader("3D Image Prompt Ideas (Cohere)")
         st.caption("Enter a topic and a visual style to generate 3D image prompt ideas.")
 
-        render_cohere_api_key_input("cohere_api_key_prompt")
         cohere_api_key = get_cohere_api_key()
         if cohere_api_key:
             st.success("Cohere key detected. Prompt ideas are ready.")
         else:
-            st.warning("Enter a Cohere API key above, or configure one in .env or Streamlit secrets.")
+            st.warning("Set COHERE_API_KEY in .env or Streamlit secrets to generate prompt ideas.")
 
         _STYLE_PRESETS = {
             "As Simple As Possible": (
@@ -1608,7 +1581,7 @@ installButton.addEventListener('click', async () => {
             if not st.session_state["prompt_topic"].strip():
                 st.info("Add a topic first.")
             elif not cohere_api_key:
-                st.error("Enter a Cohere API key above to generate prompt ideas.")
+                st.error("Set COHERE_API_KEY in .env or Streamlit secrets to generate prompt ideas.")
             else:
                 try:
                     chosen_preset = st.session_state.get("prompt_style_preset", "Simple & Cartoony")
@@ -1910,6 +1883,398 @@ installButton.addEventListener('click', async () => {
                     else:
                         st.markdown(f"[{label}]({url})")
 
+    with tab_social_animation:
+        st.subheader("Social Media & Animation Development")
+        st.caption("Create an image-led post, animate it, then prepare or schedule the result.")
+
+        create_social, animate_social, soundtrack_social, publish_social = st.tabs([
+            "1 · Create artwork",
+            "2 · Animate",
+            "3 · Soundtrack & format",
+            "4 · Caption & publish",
+        ])
+
+        source_image_bytes = b""
+        with create_social:
+            image_prompt_social = st.text_input(
+                "Describe the image",
+                placeholder="A small astronaut tending a garden on the moon",
+                key="social_workflow_image_prompt",
+            )
+            openai_key_social = get_api_key("OPENAI_API_KEY") or ""
+            if st.button("Generate image", key="social_workflow_generate_image"):
+                if not image_prompt_social.strip():
+                    st.error("Describe the image you want to create.")
+                elif not openai_key_social:
+                    st.error("Set OPENAI_API_KEY in .env or Streamlit secrets to generate an image.")
+                else:
+                    with st.spinner("Generating image..."):
+                        try:
+                            generated_path = generate_image_openai(
+                                image_prompt_social.strip(), openai_key_social
+                            )
+                            st.session_state["image_path"] = generated_path
+                            st.success("Image generated and added to the app's image assets.")
+                        except Exception as exc:
+                            st.error(f"Image generation failed: {exc}")
+
+            uploaded_source = st.file_uploader(
+                "Or upload an image",
+                type=["png", "jpg", "jpeg", "webp"],
+                key="social_workflow_source_upload",
+            )
+            image_options = {}
+            generated_image_bytes = read_binary_file(st.session_state.get("image_path"))
+            if generated_image_bytes:
+                image_options["Generated image"] = generated_image_bytes
+            model_preview = st.session_state.get("glb_preview_png")
+            if model_preview:
+                image_options["3D model preview"] = model_preview
+            if uploaded_source is not None:
+                image_options[f"Uploaded image: {uploaded_source.name}"] = uploaded_source.getvalue()
+
+            if image_options:
+                selected_image_label = st.selectbox(
+                    "Image to develop", list(image_options), key="social_workflow_image_choice"
+                )
+                source_image_bytes = image_options[selected_image_label]
+                if st.session_state.get("social_workflow_source_bytes") != source_image_bytes:
+                    st.session_state["social_workflow_pixel_art_bytes"] = None
+                    st.session_state["social_workflow_animation_bytes"] = None
+                    st.session_state["social_workflow_portrait_bytes"] = None
+                st.session_state["social_workflow_source_bytes"] = source_image_bytes
+                st.image(source_image_bytes, caption=selected_image_label, use_container_width=True)
+                pixel_size = st.slider(
+                    "Pixel size", min_value=2, max_value=32, value=8, key="social_workflow_pixel_size"
+                )
+                if st.button("Convert to pixel art", key="social_workflow_pixelate"):
+                    try:
+                        st.session_state["social_workflow_pixel_art_bytes"] = (
+                            social_media_workflow.pixelate_image(source_image_bytes, pixel_size)
+                        )
+                        st.success("Pixel-art image is ready.")
+                    except Exception as exc:
+                        st.error(f"Image conversion failed: {exc}")
+                pixel_art_bytes = st.session_state.get("social_workflow_pixel_art_bytes")
+                if pixel_art_bytes:
+                    st.image(pixel_art_bytes, caption="Pixel-art image", use_container_width=True)
+                    st.download_button(
+                        "Download pixel art",
+                        data=pixel_art_bytes,
+                        file_name="pixel-art.png",
+                        mime="image/png",
+                        key="social_workflow_download_pixel_art",
+                    )
+            else:
+                st.info("Generate or upload an image, or create a 3D preview in the existing tabs.")
+
+        with animate_social:
+            animation_reference = (
+                st.session_state.get("social_workflow_pixel_art_bytes")
+                or st.session_state.get("social_workflow_source_bytes")
+            )
+            uploaded_animation = st.file_uploader(
+                "Or upload an MP4 animation",
+                type=["mp4"],
+                key="social_workflow_animation_upload",
+            )
+            if uploaded_animation is not None:
+                st.session_state["social_workflow_animation_bytes"] = uploaded_animation.getvalue()
+                st.session_state["social_workflow_portrait_bytes"] = None
+            animation_prompt = st.text_input(
+                "Describe the motion",
+                value="A gentle idle animation; preserve the original art style.",
+                key="social_workflow_animation_prompt",
+            )
+            viggle_key = st.text_input(
+                "Viggle API key",
+                type="password",
+                key="social_workflow_viggle_key",
+                help="Entered for this browser session only; rotate it here when needed.",
+            )
+            quality_cols = st.columns(2)
+            with quality_cols[0]:
+                viggle_quality = st.selectbox(
+                    "Viggle quality", ["low", "high"], key="social_workflow_viggle_quality"
+                )
+            with quality_cols[1]:
+                viggle_duration = st.slider(
+                    "Duration (seconds)",
+                    min_value=3,
+                    max_value=15,
+                    value=5,
+                    key="social_workflow_viggle_duration",
+                )
+            st.caption("Viggle generation is billed by duration and may take several minutes.")
+            if st.button("Create animation", type="primary", key="social_workflow_animate"):
+                if not animation_reference:
+                    st.error("Create or upload an image in the first stage before animating.")
+                elif not viggle_key:
+                    st.error("Enter a Viggle API key to generate an animation.")
+                else:
+                    with st.spinner("Animating with Viggle..."):
+                        try:
+                            st.session_state["social_workflow_animation_bytes"] = (
+                                social_media_workflow.animate_image(
+                                    animation_reference,
+                                    animation_prompt,
+                                    viggle_key,
+                                    quality=viggle_quality,
+                                    duration_seconds=viggle_duration,
+                                )
+                            )
+                            st.session_state["social_workflow_portrait_bytes"] = None
+                            st.success("Animation created.")
+                        except Exception as exc:
+                            st.error(f"Animation failed: {exc}")
+
+            animation_bytes = st.session_state.get("social_workflow_animation_bytes")
+            if animation_bytes:
+                st.video(animation_bytes)
+                st.download_button(
+                    "Download animation",
+                    data=animation_bytes,
+                    file_name="animation.mp4",
+                    mime="video/mp4",
+                    key="social_workflow_download_animation",
+                )
+            elif not animation_reference:
+                st.info("Create pixel art or upload an MP4 animation to begin.")
+
+        with soundtrack_social:
+            animation_bytes = st.session_state.get("social_workflow_animation_bytes")
+            soundtrack_upload = st.file_uploader(
+                "Optional soundtrack",
+                type=["mp3", "wav", "m4a", "aac", "ogg", "flac"],
+                key="social_workflow_soundtrack_upload",
+            )
+            if soundtrack_upload is not None:
+                st.session_state["social_workflow_soundtrack_bytes"] = soundtrack_upload.getvalue()
+                st.session_state["social_workflow_soundtrack_extension"] = (
+                    os.path.splitext(soundtrack_upload.name)[1].lower().lstrip(".")
+                )
+            if animation_bytes:
+                if st.button("Add soundtrack", key="social_workflow_add_soundtrack"):
+                    music_bytes = st.session_state.get("social_workflow_soundtrack_bytes")
+                    if not music_bytes:
+                        st.error("Upload a soundtrack first.")
+                    else:
+                        try:
+                            st.session_state["social_workflow_animation_bytes"] = (
+                                social_media_workflow.add_background_music(
+                                    animation_bytes,
+                                    music_bytes,
+                                    st.session_state.get("social_workflow_soundtrack_extension", ""),
+                                )
+                            )
+                            st.session_state["social_workflow_portrait_bytes"] = None
+                            st.success("Soundtrack added to the animation.")
+                        except Exception as exc:
+                            st.error(f"Could not add soundtrack: {exc}")
+                zoom = st.slider(
+                    "Portrait video zoom",
+                    min_value=0.5,
+                    max_value=2.0,
+                    value=1.0,
+                    step=0.1,
+                    key="social_workflow_portrait_zoom",
+                )
+                st.caption("Export a 1080 × 1920 MP4 with the full video centered over a sampled background.")
+                if st.button("Convert to portrait video", key="social_workflow_convert_portrait"):
+                    with st.spinner("Converting video to portrait format..."):
+                        try:
+                            st.session_state["social_workflow_portrait_bytes"] = (
+                                social_media_workflow.convert_to_tiktok_format(animation_bytes, zoom)
+                            )
+                            st.success("Portrait video is ready.")
+                        except Exception as exc:
+                            st.error(f"Video conversion failed: {exc}")
+                final_video = (
+                    st.session_state.get("social_workflow_portrait_bytes") or animation_bytes
+                )
+                st.video(final_video)
+            else:
+                st.info("Create or upload an animation in the previous stage first.")
+
+        with publish_social:
+            animation_bytes = st.session_state.get("social_workflow_animation_bytes")
+            final_video = (
+                st.session_state.get("social_workflow_portrait_bytes") or animation_bytes
+            )
+            image_asset = (
+                st.session_state.get("social_workflow_pixel_art_bytes")
+                or st.session_state.get("social_workflow_source_bytes")
+                or source_image_bytes
+            )
+            if final_video:
+                local_asset, local_name, local_mime = final_video, "social-video.mp4", "video/mp4"
+                st.video(final_video)
+            elif image_asset:
+                local_asset, local_name, local_mime = image_asset, "social-image.png", "image/png"
+                st.image(image_asset, use_container_width=True)
+            else:
+                local_asset, local_name, local_mime = b"", "", ""
+                st.info("Create an image or animation before preparing a post.")
+
+            if local_asset:
+                st.download_button(
+                    "Download final social asset",
+                    data=local_asset,
+                    file_name=local_name,
+                    mime=local_mime,
+                    key="social_workflow_download_final_asset",
+                )
+
+            if st.button("Generate caption with Cohere", key="social_workflow_generate_caption"):
+                cohere_api_key = get_cohere_api_key()
+                if not cohere_api_key:
+                    st.error("Set COHERE_API_KEY in .env or Streamlit secrets to generate a caption.")
+                else:
+                    prompt_text = (
+                        "Write one concise, engaging social media caption for this creative asset. "
+                        "Return only the caption, without hashtags or quotation marks.\n\n"
+                        f"Image or animation description: {image_prompt_social or 'A creative 3D or pixel-art asset'}"
+                    )
+                    try:
+                        st.session_state["social_workflow_caption"] = get_cohere_response(
+                            api_key=cohere_api_key,
+                            user_input=prompt_text,
+                            history=[],
+                            model_name=st.session_state.get("cohere_model", "command-a-03-2025"),
+                            temperature=0.7,
+                            max_tokens=180,
+                        )
+                        st.success("Caption generated.")
+                    except Exception as exc:
+                        st.error(f"Caption generation failed: {exc}")
+            caption = st.text_area(
+                "Caption",
+                key="social_workflow_caption",
+                placeholder="Describe the image, animation, or idea behind it.",
+            )
+            hashtags = st.text_input(
+                "Hashtags", value="3d, animation, digitalart", key="social_workflow_hashtags"
+            )
+            call_to_action = st.text_input(
+                "Call to action", key="social_workflow_cta", placeholder="Follow for more creations"
+            )
+            post_text = "\n\n".join(
+                part
+                for part in [
+                    st.session_state.get("social_workflow_caption", "").strip(),
+                    st.session_state.get("social_workflow_cta", "").strip(),
+                    normalize_hashtags(st.session_state.get("social_workflow_hashtags", "")),
+                ]
+                if part
+            )
+            st.markdown("#### Post preview")
+            st.code(post_text or "Add a caption, call to action, or hashtags.", language="markdown")
+            if post_text:
+                st.download_button(
+                    "Download caption text",
+                    data=post_text.encode("utf-8"),
+                    file_name="social-caption.txt",
+                    mime="text/plain",
+                    key="social_workflow_download_caption",
+                )
+
+            st.markdown("#### Buffer publishing")
+            st.caption("Buffer needs a direct, publicly accessible HTTPS media URL; local files cannot be uploaded directly.")
+            buffer_key = get_api_key("BUFFER_API_KEY") or ""
+            if st.button("Load Buffer organizations", key="social_workflow_load_orgs"):
+                if not buffer_key:
+                    st.error("Set BUFFER_API_KEY in .env or Streamlit secrets first.")
+                else:
+                    try:
+                        st.session_state["social_workflow_buffer_organizations"] = (
+                            social_media_workflow.get_organizations(buffer_key)
+                        )
+                        st.success("Buffer organizations loaded.")
+                    except Exception as exc:
+                        st.error(f"Could not load Buffer organizations: {exc}")
+
+            organizations = st.session_state.get("social_workflow_buffer_organizations", [])
+            selected_organization = None
+            if organizations:
+                selected_organization = st.selectbox(
+                    "Buffer organization",
+                    organizations,
+                    format_func=lambda organization: organization["name"],
+                    key="social_workflow_buffer_organization",
+                )
+                if st.button("Load channels", key="social_workflow_load_channels"):
+                    try:
+                        st.session_state["social_workflow_buffer_channels"] = (
+                            social_media_workflow.get_channels(selected_organization["id"], buffer_key)
+                        )
+                        st.session_state["social_workflow_buffer_channel_org"] = selected_organization["id"]
+                        st.success("Buffer channels loaded.")
+                    except Exception as exc:
+                        st.error(f"Could not load Buffer channels: {exc}")
+
+            channels = st.session_state.get("social_workflow_buffer_channels", [])
+            if selected_organization and st.session_state.get("social_workflow_buffer_channel_org") != selected_organization["id"]:
+                channels = []
+            selected_channel = None
+            if channels:
+                selected_channel = st.selectbox(
+                    "Social channel",
+                    channels,
+                    format_func=lambda channel: f"{channel['name']} ({channel.get('service', 'channel')})",
+                    key="social_workflow_buffer_channel",
+                )
+
+            media_url = st.text_input(
+                "Public media file URL (optional)",
+                placeholder="https://cdn.example.com/social-video.mp4",
+                key="social_workflow_buffer_media_url",
+            )
+            media_kind = st.selectbox(
+                "Media type",
+                ["video", "image"],
+                key="social_workflow_buffer_media_kind",
+            )
+            schedule_mode = st.radio(
+                "When to publish",
+                ["Add to next queue slot", "Schedule for a specific UTC time"],
+                key="social_workflow_buffer_schedule_mode",
+            )
+            due_at = None
+            if schedule_mode == "Schedule for a specific UTC time":
+                from datetime import datetime, timezone
+
+                schedule_date = st.date_input("Publish date (UTC)", key="social_workflow_buffer_date")
+                schedule_time = st.time_input("Publish time (UTC)", key="social_workflow_buffer_time")
+                due_at = datetime.combine(
+                    schedule_date, schedule_time, tzinfo=timezone.utc
+                ).isoformat()
+
+            if st.button("Queue or schedule post", type="primary", key="social_workflow_publish"):
+                if not buffer_key:
+                    st.error("Set BUFFER_API_KEY in .env or Streamlit secrets first.")
+                elif not selected_channel:
+                    st.error("Load Buffer organizations and choose a social channel.")
+                elif not post_text:
+                    st.error("Write a caption or add a call to action or hashtags.")
+                else:
+                    try:
+                        post = social_media_workflow.create_post(
+                            channel_id=selected_channel["id"],
+                            text=post_text,
+                            api_key=buffer_key,
+                            mode=(
+                                "addToQueue"
+                                if schedule_mode == "Add to next queue slot"
+                                else "customScheduled"
+                            ),
+                            due_at=due_at,
+                            media_url=media_url or None,
+                            media_kind=media_kind if media_url else None,
+                        )
+                        st.success(f"Post submitted to Buffer (ID: {post.get('id', 'created')}).")
+                    except Exception as exc:
+                        st.error(f"Could not submit the Buffer post: {exc}")
+
     with tab_links:
         st.subheader("Links")
         st.caption("Quick links to tools for writing, ecommerce, social sharing, and 3D creation.")
@@ -1957,7 +2322,7 @@ def get_openai_client(api_key):
     from openai import OpenAI
 
     if not api_key:
-        raise ValueError("Enter an OpenAI API key to generate an image.")
+        raise ValueError("Set OPENAI_API_KEY in .env or Streamlit secrets to generate an image.")
     return OpenAI(api_key=api_key)
 
 
@@ -1969,12 +2334,12 @@ def _friendly_openai_image_error(exc):
     if "billing_hard_limit_reached" in lowered or "billing hard limit has been reached" in lowered:
         return (
             "OpenAI billing limit reached for the active key/project. "
-            "Use a funded key, then enter it above and try again."
+            "Use a funded key, update OPENAI_API_KEY in .env or Streamlit secrets, and try again."
         )
 
     if "invalid_api_key" in lowered or "incorrect api key" in lowered:
         return (
-            "OpenAI rejected the API key. Check the key entered above, then retry image generation."
+            "OpenAI rejected the API key. Check OPENAI_API_KEY in .env or Streamlit secrets, then retry."
         )
 
     return f"Image generation failed: {text}"
@@ -2014,7 +2379,7 @@ def generate_image_openai(prompt: str, api_key: str) -> str:
 
 def image_to_3d(host, image_path, stability_key, **kwargs):
     if not stability_key:
-        raise ValueError("Enter a Stability AI API key to generate a 3D model.")
+        raise ValueError("Set STABILITY_API_KEY in .env or Streamlit secrets to generate a 3D model.")
 
     with open(image_path, "rb") as image_file:
         response = requests.post(

@@ -7,3 +7,4 @@ python-dotenv>=1.0,<2
 plotly>=6,<7
 trimesh>=4.12,<5
 moviepy>=2.2,<3
+imageio-ffmpeg>=0.5

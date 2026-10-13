@@ -26,6 +26,8 @@ RKstudio3Dps is a Streamlit workspace for taking an idea from AI-assisted concep
 - Edit videos with trimming, playback-speed controls, fades, black-and-white, mirroring, and audio muting
 - Prepare generated images, 3D model previews, and edited videos for download and social posts
 - Build social captions with post formats, hashtags, and calls to action
+- Convert images to pixel art, animate them with Viggle, add soundtracks, and export portrait video
+- Draft captions with Cohere and queue or schedule posts through Buffer
 - Open tools for ecommerce and promotion, including Shopify, TikTok Shop, Printful, Etsy, Canva, TikTok, Medium, ChatGPT, and Claude
 
 ### App experience
@@ -40,14 +42,16 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-**Important:** Never commit API keys to version control. Image and 3D model generation keys are entered through password fields in the app for the active browser session and are not read from backend configuration. **Do not commit API keys or a `.env` file.**
+**Important:** Never commit API keys to version control or commit a `.env` file.
+Configure OpenAI, Cohere, Buffer, and Stability keys on the server in `.env` (or
+Streamlit secrets). Only the Viggle key is entered in the app; it is kept in the
+active browser session so it can be rotated without changing server configuration.
 
-For the Cohere AI chat, blog writer, and prompt ideas, users can enter a key in the
-app's **Cohere API Key** panel. Alternatively, configure it with an environment
-variable or Streamlit secret:
-
-```bash
+```dotenv
+OPENAI_API_KEY=your_openai_key
 COHERE_API_KEY=your_cohere_key
+BUFFER_API_KEY=your_buffer_key
+STABILITY_API_KEY=your_stability_key
 ```
 
 Start the app:
@@ -64,14 +68,19 @@ streamlit run streamlit_app.py
 
 ## Streamlit Cloud
 
-Use `streamlit_app.py` as the app entry point. Demo users supply their own OpenAI,
-Stability AI, and Cohere credentials in the app; Cohere can also be configured with
-`COHERE_API_KEY` in Streamlit secrets or environment variables. The repo is
-structured so it can be connected directly to Streamlit Cloud.
+Use `streamlit_app.py` as the app entry point. Configure `OPENAI_API_KEY`,
+`COHERE_API_KEY`, `BUFFER_API_KEY`, and `STABILITY_API_KEY` as Streamlit secrets.
+Users enter their Viggle key in the active session. The repo is structured so it
+can be connected directly to Streamlit Cloud.
 
 MoviePy processing is local to the Streamlit instance and runs only after an edit is
 requested. Video editing uses CPU and temporary disk space, so large or long videos
 may be slower or exceed the memory/storage limits of Streamlit Community Cloud.
+
+The **Social Media & Animation Development** tab uses the server-configured Buffer
+key and the session-entered Viggle key. Viggle animation and AI provider usage may
+incur charges. Buffer requires a direct, publicly accessible HTTPS media URL;
+upload exported media to a host such as Amazon S3 or Cloudinary before attaching it.
 
 ## Attributions 
 
