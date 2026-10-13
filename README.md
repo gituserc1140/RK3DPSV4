@@ -1,6 +1,6 @@
 # RKstudio3Dps: Creative Studio & Ecommerce Toolkit
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://rk3dpsv2-d28ge3fupclhhshqdxmaxn.streamlit.app/)
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://rk3dpsv4-unbdxhppfwaxamzxdymgdx.streamlit.app/)
 
 RKstudio3Dps is a Streamlit workspace for taking an idea from AI-assisted concepting through image and 3D creation, content production, and social-ready exports. It supports creators building assets for 3D printing, ecommerce, and social media—not only image-to-3D conversion.
 
